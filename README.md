@@ -1,4 +1,3 @@
-# Healthcare_domain
 # HealthCare Domain Project
 
 ## Overview
