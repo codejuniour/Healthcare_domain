@@ -1,0 +1,279 @@
+# Importing necessary imports
+import os
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+sns.set()
+#!pip install lux
+#import lux
+df = pd.read_csv('kidney_disease.csv')
+df.head()
+df.shape
+df
+df.columns
+# duplicates - cleaning part
+df.duplicated().sum()
+# missing value checks
+df.isnull().sum().sum()
+df.isnull().sum()/len(df)*100
+df.info()
+# Finding the unique values in the given columns
+
+for i in df.columns:
+    print("************************************", i ,  "****************************")
+    print()
+    print(set(df[i].tolist()))
+    print()
+df.dtypes
+df['pcv'] = df['pcv'].apply(lambda x:'43' if x=='\t43' else x)
+df['pcv'] = df['pcv'].apply(lambda x:'41' if x=='\t?' else x)
+df['wc'] = df['wc'].apply(lambda x:'6200' if x=='\t6200' else x)
+df['wc'] = df['wc'].apply(lambda x:'8400' if x=='\t8400' else x)
+df['wc'] = df['wc'].apply(lambda x:'9800' if x=='\t?' else x)
+df['pcv'].mode()[0]
+df['rc'] = df['rc'].apply(lambda x:'5.2' if x=='\t?' else x)
+df['classification'] = df['classification'].apply(lambda x:'ckd' if x=='ckd\t' else x)
+df['cad'] = df['cad'].apply(lambda x:'no' if x=='\tno' else x)
+df['dm'] = df['dm'].apply(lambda x:'yes' if x=='\tyes' else x)
+df['dm'] = df['dm'].apply(lambda x:'no' if x=='\tno' else x)
+df['dm'] = df['dm'].apply(lambda x:'yes' if x==' yes' else x)
+for i in df.select_dtypes(exclude=["object"]).columns:
+    df[i]=df[i].apply(lambda x:float(x))
+# Finding the unique values in the given columns
+
+for i in df.columns:
+    print("************************************", i ,  "****************************")
+    print()
+    print(set(df[i].tolist()))
+    print()
+df.dtypes
+print(df['pcv'].mode()[0])
+print()
+print(df['wc'].mode()[0])
+print()
+print(df['rc'].mode()[0])
+df['pcv'] = df['pcv'].fillna(df['pcv'].mode()[0])
+df['wc'] = df['wc'].fillna(df['wc'].mode()[0])
+df['rc'] = df['rc'].fillna(df['rc'].mode()[0])
+df['pcv'] = df['pcv'].astype('int64')
+df['wc'] = df['wc'].astype('int64')
+df['rc'] = df['rc'].astype('float64')
+object_columns = df.select_dtypes(include=['object']).columns
+print("Object type Columns :")
+print(object_columns)
+
+
+numerical_columns = df.select_dtypes(include=['int64','float64']).columns
+print("\nNumerical type Columns :")
+print(numerical_columns)
+#pcv               17.50
+#wc                26.25
+#rc                32.50
+from sklearn.impute import SimpleImputer
+imp_mode1 = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
+imp_mode2 = SimpleImputer(missing_values=np.nan, strategy='median')
+df_imp1 = pd.DataFrame(imp_mode1.fit_transform(df[object_columns]))
+df_imp1.columns = df[object_columns].columns
+df_imp2 = pd.DataFrame(imp_mode2.fit_transform(df[numerical_columns]))
+df_imp2.columns = df[numerical_columns].columns
+df[object_columns].columns
+print(df_imp1.isnull().sum().sum())
+print()
+print(df_imp2.isnull().sum().sum())
+df_imp1
+df_imp2
+df_imp1
+df_imp2 = df_imp2.iloc[:,1:]
+df_imp2
+sns.boxplot(y='age', data=df_imp2)
+# Checking outlier
+def boxplots(col):
+    sns.boxplot(df_imp2[col])
+    plt.show()
+
+for i in list(df_imp2.select_dtypes(exclude=['object']).columns)[0:]:
+    boxplots(i)
+df_imp1.columns
+df_imp2.columns
+df_imp1['test'] = 'test'
+df_imp2['test'] = 'test'
+table_df = pd.concat([df_imp1,df_imp2], axis=1)
+table_df
+table_df.columns
+table_df = table_df.drop(['test'], axis=1)
+table_df.columns
+# split the data into independent and dependent variables
+x = table_df.drop('classification', axis=1)
+y = table_df['classification']
+x.columns
+y
+y.value_counts()
+y = np.where(y=='ckd', 1,0)
+pd.DataFrame(y).value_counts()
+# Handing encoding concept 
+def classify_features(x):
+    categorical_features =[]
+    non_categorical_features = []
+    discreate_features = []
+    continous_features = []
+    for column in x.columns:
+        if x[column].dtype=='object':
+            if x[column].nunique() < 3:
+                categorical_features.append(column)
+            else:
+                non_categorical_features.append(column)
+        elif x[column].dtype in ['int64','float64']:
+            if x[column].nunique() < 100:
+                discreate_features.append(column)
+            else:
+                continous_features.append(column)
+    return categorical_features, non_categorical_features, discreate_features, continous_features
+categorical, non_categorical, discreate, continous = classify_features(x)
+categorical
+non_categorical
+discreate
+continous
+# EDA
+import dtale
+dtale.show(df)
+for i in categorical:
+    print(x[i].value_counts())
+    print()
+df_dummies = pd.get_dummies(x[categorical], drop_first=True)
+x[categorical]
+df_dummies
+df_dummies1 = np.where(df_dummies[0:]==True,1,0)
+df_dummies1
+df_dummies1 = pd.DataFrame(df_dummies1)
+df_dummies1.columns = df_dummies.columns
+df_dummies1
+df1 = pd.concat([x.drop(columns=categorical), df_dummies1], axis=1)
+df1.head()
+df1.describe()
+sns.boxplot(y='bu', data=df1)
+# preprocessing part *******very very important 
+1. part 1 - missing value treatement done
+2. part 2 - encoding part done (char variable only)
+3. part 3 - outlier treatement - not required (numerical variable only)
+4. part 4 - Feature scaling (normalization or standarization) - depends basis the result
+5. part 5 - Imbalance treatement (this is only application with classification problem)
+pd.DataFrame(y).value_counts(normalize=True)
+# split the data into train and test
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(df1, y, test_size=0.2, random_state=42, stratify=y)
+pd.DataFrame(y_train).value_counts()
+pd.DataFrame(y_test).value_counts()
+# Building Maching Learning (Traditional Algorithm)
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from xgboost import XGBClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+# evaluation matrics
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+list_met = []
+list_accuracy = []
+
+# LogisticRegression
+logit = LogisticRegression()
+logit = logit.fit(x_train, y_train)
+y_pred_lr = logit.predict(x_test)
+accuracy_lr = accuracy_score(y_test, y_pred_lr)
+
+# DecisionTree
+dtree = DecisionTreeClassifier()
+dtree = dtree.fit(x_train, y_train)
+y_pred_dt = dtree.predict(x_test)
+accuracy_dt = accuracy_score(y_test, y_pred_dt)
+
+# RandomForest
+rforest = RandomForestClassifier()
+rforest = rforest.fit(x_train, y_train)
+y_pred_rf = rforest.predict(x_test)
+accuracy_rf = accuracy_score(y_test, y_pred_rf)
+
+# XGBoost
+xgboost = XGBClassifier()
+xgboost = xgboost.fit(x_train, y_train)
+y_pred_xg = xgboost.predict(x_test)
+accuracy_xg = accuracy_score(y_test, y_pred_xg)
+
+# KNN
+knn = KNeighborsClassifier()
+knn = knn.fit(x_train, y_train)
+y_pred_knn = knn.predict(x_test)
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+
+# KNN
+knn = KNeighborsClassifier()
+knn = knn.fit(x_train, y_train)
+y_pred_knn = knn.predict(x_test)
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+
+# SVM
+svm = SVC()
+svm = svm.fit(x_train, y_train)
+y_pred_svm = svm.predict(x_test)
+accuracy_svm = accuracy_score(y_test, y_pred_svm)
+
+# Naive Based Theorem
+nbt = GaussianNB()
+nbt = nbt.fit(x_train, y_train)
+y_pred_nbt = nbt.predict(x_test)
+accuracy_nbt = accuracy_score(y_test, y_pred_nbt)
+
+# Voting Classifier - combining all the above model together by using voting classifier approach
+model_evc = VotingClassifier(estimators = [('logit',logit), ('dtree',dtree), ('rforest',rforest),('xgboost',xgboost),
+                                           ('knn',knn),('svm',svm),('nbt',nbt)])
+model_evc = model_evc.fit(x_train, y_train)
+pred_evc = model_evc.predict(x_test)
+accuracy_evc = accuracy_score(y_test, pred_evc)
+
+list1 = ['LogitRegession','Dtree','RForest','XGB','KNN','SVM','NBT','Voting']
+list2 = [accuracy_lr,accuracy_dt,accuracy_rf,accuracy_xg,accuracy_knn,accuracy_svm,accuracy_nbt,accuracy_evc]
+list3 = [logit,dtree,rforest,xgboost,knn,svm,nbt,model_evc]
+
+df_accuracy = pd.DataFrame({"Method Used":list1, "Accuracy":list2})
+
+print(df_accuracy)
+
+chart = sns.barplot(x="Method Used", y="Accuracy", data=df_accuracy)
+chart.set_xticklabels(chart.get_xticklabels(), rotation=90)
+print(chart)                          
+                               
+# Check underfitting and overfitting problem (high bias or high variance problem)- Bias-Variance Trade off
+
+pred_evc_train = model_evc.predict(x_train)
+pred_evc_test = model_evc.predict(x_test)
+accuracy_evc_train = accuracy_score(y_train, pred_evc_train)
+accuracy_evc_test = accuracy_score(y_test, pred_evc_test)
+
+print("************************")
+print("Training Accuracy :",accuracy_evc_train)
+print("************************")
+print("Testb Accuracy :",accuracy_evc_test)
+# Cross Validation
+from sklearn.model_selection import cross_val_score
+training = cross_val_score(model_evc, x_train, y_train, cv=10)
+print("Training Accuracy :", training.mean())
+print("***************")
+print("Testb Accuracy :",accuracy_evc_test)
+training
+print("************************")
+print("Training Accuracy :",classification_report(y_train, pred_evc_train))
+print("************************")
+print("Testb Accuracy :",classification_report(y_test, pred_evc_test))
+print("************************")
+print(confusion_matrix(y_train, pred_evc_train))
+print("************************")
+print(confusion_matrix(y_test, pred_evc_test))
+# Deployment part
+# Automation part - few line code
+# HyperParameter tuning - 
